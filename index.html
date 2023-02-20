@@ -243,7 +243,9 @@ button.search-button:active {
                 let [place, status] = await new Promise(resolve => {
                 service.getDetails({placeId: business.place_id}, (place, status) => {
                     console.log(status);
-                    resolve([place, status]);
+                    setTimeout(() => {
+                      resolve([place, status]);
+                    }, 1000);
                 });
                 });
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
