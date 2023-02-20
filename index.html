@@ -225,7 +225,7 @@ button.search-button:active {
               }
               setTimeout(function() {
                 getNextPage();
-              }, 10);
+              }, 1);
             };
             service.textSearch(request, addResults);
           });
@@ -246,8 +246,11 @@ button.search-button:active {
                 });
                 });
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
+                  console.log()
                 if (place.formatted_phone_number) {
                     html += '<p class="business-phone">Phone: ' + place.formatted_phone_number + '</p>';
+                } else {
+                  console.log("No phone");
                 }
                 if (place.website) {
                     html += '<p>Website: <a  class="business-website" href="' + place.website + '">' + place.website + '</a></p>';
