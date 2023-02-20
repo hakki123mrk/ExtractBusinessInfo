@@ -242,6 +242,7 @@ button.search-button:active {
                 //html += '<p class="business-address">' + business.formatted_address + '</p>';
                 let [place, status] = await new Promise(resolve => {
                 service.getDetails({placeId: business.place_id}, (place, status) => {
+                    console.log(place.formatted_phone_number, status);
                     resolve([place, status]);
                 });
                 });
