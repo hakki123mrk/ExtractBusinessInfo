@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Google Maps API</title>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBwP5vjdR5leCu63dfWYINBxcnCfj0A12s&libraries=places&callback=Function.prototype"></script>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<style>
+		/* Container for search elements */
+.search-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Search input */
+.input {
+  flex: 1; /* Take up remaining space */
+  height: 40px;
+  font-size: 16px;
+  padding: 10px;
+  margin-left: 10px;
+}
+
+/* Search button */
+button.search-button {
+  height: 40px;
+  margin-left: 10px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Search button hover state */
+button.search-button:hover {
+  background-color: #3e8e41;
+}
+
+/* Search button active state */
+button.search-button:active {
+  background-color: #3e8e41;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+/* Export to Excel button */
+#export-button {
+  height: 40px;
+  margin-left: 10px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Export to Excel button hover state */
+#export-button:hover {
+  background-color: #3e8e41;
+}
+
+/* Export to Excel button active state */
+#export-button:active {
+  background-color: #3e8e41;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+#map{
+    height: 400px;
+    margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Business class style */
+.business {
+    padding: 10px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.business-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.business-address {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.business-phone {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.business-website {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: blue;
+}
+
+.business-website:hover {
+    text-decoration: underline;
+}
+	</style>
+</head>
+<body onload="initMap()">
+	<h1>Google Maps API</h1>
+    <div class="search-container">
+	  <input class="input" type="text" id="search-input" placeholder="Enter a city name">
+    <button id="city-button" class="search-button" onclick="centerMapOnCity()">Select City</button>
+    <input class="input" type="text" id="business-input" placeholder="Enter the business type">
+    <input class="input" type="number" id="radius-input" max="50" min="1" value="10" placeholder="Search Radius">
+    <button id="search-button" class="search-button" onclick="search()">Search</button>
+	  <button id="export-button" onclick="exportToExcel()">Export to Excel</button>
+    </div>
+    <div id="map"></div>
+	<div id="search-results"></div>
+
+	<script>
+		var searchInput = document.getElementById('search-input');
+    var businessInput = document.getElementById('business-input');
+    var radiusInput = document.getElementById('radius-input');
+		var searchResults = document.getElementById('search-results');
+		var exportButton = document.getElementById('export-button');
+		var searchButton = document.getElementById('search-button');
+        var map;
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: 12.9141, lng: 74.8560},
+                zoom: 8
+            });
+        }  
+
+		// Initialize the Places service
+		var service = new google.maps.places.PlacesService(document.createElement('div'));
+
+		// Autocomplete the search input
+		var autocomplete = new google.maps.places.Autocomplete(searchInput);
+		autocomplete.setFields(['place_id', 'formatted_address']);
+		autocomplete.addListener('place_changed', function() {
+			var place = autocomplete.getPlace();
+			if (place.formatted_address) {
+				searchInput.value = place.formatted_address;
+			}
+		});
+
+        function centerMapOnCity() {            
+            var city = searchInput.value;
+            // Use the Google Maps API to geocode the city
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: city }, function (results, status) {
+                if (status === "OK") {
+                // If the geocoding was successful, extract the location and center the map on it
+                const location = results[0].geometry.location;
+                
+                // Create a new bounds object based on the viewport of the city
+                const viewport = results[0].geometry.viewport;
+                const bounds = new google.maps.LatLngBounds(
+                    { lat: viewport.getSouthWest().lat(), lng: viewport.getSouthWest().lng() },
+                    { lat: viewport.getNorthEast().lat(), lng: viewport.getNorthEast().lng() }
+                );
+                
+                // Set the center of the map to the location of the city and fit the bounds to the viewport
+                map.setCenter(location);
+                map.fitBounds(bounds);
+                
+                // Limit the zoom level to a maximum of 15
+                const maxZoom = 15;
+                if (map.getZoom() > maxZoom) {
+                    map.setZoom(maxZoom);
+                }
+                } else {
+                // If the geocoding failed, log an error message
+                console.error("Geocode was not successful for the following reason: " + status);
+                }
+            });
+        }
+
+
+
+		// Search for businesses in the selected city
+		let businesses = [];
+
+        function search() {
+          var city = businessInput.value;
+          searchButton.innerHTML = 'Loading...';
+          exportButton.disabled = true;
+          searchButton.disabled = true;
+          console.log(radiusInput.value);
+          var request = {
+            location: map.getCenter(),
+            radius: radiusInput.value*1000,
+            query: city,
+            fields: ['name', 'formatted_address', 'rating', 'user_ratings_total', 'types']
+          };
+          return new Promise((resolve, reject) => {
+            var businesses = [];
+            var getNextPage = null;
+            var addResults = function(results, status, pagination) {
+              if (status === google.maps.places.PlacesServiceStatus.OK) {
+                businesses = businesses.concat(results.filter(function(result) {
+                  return result.types.includes('establishment');
+                }));
+                if (pagination.hasNextPage) {
+                  getNextPage = function() {
+                    pagination.nextPage();
+                  };
+                } else {
+                  displayResults(businesses);
+                  resolve(businesses);
+                  return;
+                }
+              } else {
+                reject(status);
+                return;
+              }
+              setTimeout(function() {
+                getNextPage();
+              }, 1000);
+            };
+            service.textSearch(request, addResults);
+          });
+        }
+
+
+
+// Display the search results
+        async function displayResults(businesses) {
+            var html = '';
+            for (let business of businesses) {
+                html += '<div class="business">';
+                html += '<h2 class="business-name">' + business.name + '</h2>';
+                //html += '<p class="business-address">' + business.formatted_address + '</p>';
+                let [place, status] = await new Promise(resolve => {
+                service.getDetails({placeId: business.place_id}, (place, status) => {
+                    resolve([place, status]);
+                });
+                });
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                if (place.formatted_phone_number) {
+                    html += '<p class="business-phone">Phone: ' + place.formatted_phone_number + '</p>';
+                }
+                if (place.website) {
+                    html += '<p>Website: <a  class="business-website" href="' + place.website + '">' + place.website + '</a></p>';
+                }
+                }
+                //html += '<p>Rating: ' + business.rating + ' (' + business.user_ratings_total + ' reviews)</p>';
+                html += '</div>';
+            }
+            searchResults.innerHTML = html;
+            searchButton.innerHTML = 'Search';
+            searchButton.disabled = false;
+            exportButton.disabled = false;
+        }
+
+// Export the search results to Excel
+ function exportToExcel() {
+            var businesses = Array.from(document.querySelectorAll('.business'));
+            console.log("getting data")
+            var rows = businesses.map(function(business) {
+                var name = business.querySelector('h2').textContent;
+                try {
+                    var address = business.querySelector('p:nth-of-type(1)').textContent;
+                } catch(err){}
+                try {
+                    var rating = business.querySelector('p:nth-of-type(2)').textContent;
+                } catch(err) {}
+                return [name, address, rating];
+            });
+            var csv = 'Business Name,Address,Rating\n';
+            rows.forEach(function(row) {
+                csv += row.join(',') + '\n';
+            });
+            var link = document.createElement('a');
+            link.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv));
+            link.setAttribute('download', 'businesses.csv');
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    </script>
+</body>
+</html>
