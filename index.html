@@ -246,7 +246,7 @@ button.search-button:active {
                 });
                 });
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
-                  console.log()
+                  console.log("Status OK");
                 if (place.formatted_phone_number) {
                     html += '<p class="business-phone">Phone: ' + place.formatted_phone_number + '</p>';
                 } else {
@@ -255,6 +255,8 @@ button.search-button:active {
                 if (place.website) {
                     html += '<p>Website: <a  class="business-website" href="' + place.website + '">' + place.website + '</a></p>';
                 }
+                } else {
+                  console.log("Status not okay");
                 }
                 //html += '<p>Rating: ' + business.rating + ' (' + business.user_ratings_total + ' reviews)</p>';
                 html += '</div>';
