@@ -13,11 +13,12 @@
 }
 
 /* Search input */
-#search-input {
+.input {
   flex: 1; /* Take up remaining space */
   height: 40px;
   font-size: 16px;
   padding: 10px;
+  margin-left: 10px;
 }
 
 /* Search button */
@@ -114,15 +115,20 @@ button.search-button:active {
 <body onload="initMap()">
 	<h1>Google Maps API</h1>
     <div class="search-container">
-	<input type="text" id="search-input" placeholder="Enter a city name">
-    <button id="search-button" class="search-button" onclick="centerMapOnCity()">Select City</button>
-	<button id="export-button" onclick="exportToExcel()">Export to Excel</button>
+	  <input class="input" type="text" id="search-input" placeholder="Enter a city name">
+    <button id="city-button" class="search-button" onclick="centerMapOnCity()">Select City</button>
+    <input class="input" type="text" id="business-input" placeholder="Enter the business type">
+    <input class="input" type="number" id="radius-input" max="50" min="1" value="10" placeholder="Search Radius">
+    <button id="search-button" class="search-button" onclick="search()">Search</button>
+	  <button id="export-button" onclick="exportToExcel()">Export to Excel</button>
     </div>
     <div id="map"></div>
 	<div id="search-results"></div>
 
 	<script>
 		var searchInput = document.getElementById('search-input');
+    var businessInput = document.getElementById('business-input');
+    var radiusInput = document.getElementById('radius-input');
 		var searchResults = document.getElementById('search-results');
 		var exportButton = document.getElementById('export-button');
 		var searchButton = document.getElementById('search-button');
@@ -185,44 +191,45 @@ button.search-button:active {
 		let businesses = [];
 
         function search() {
-  var city = searchInput.value;
-  searchButton.innerHTML = 'Loading...';
-  exportButton.disabled = true;
-  searchButton.disabled = true;
-  var request = {
-    location: map.getCenter(),
-    radius: 5000,
-    query: city,
-    fields: ['name', 'formatted_address', 'rating', 'user_ratings_total', 'types']
-  };
-  return new Promise((resolve, reject) => {
-    var businesses = [];
-    var getNextPage = null;
-    var addResults = function(results, status, pagination) {
-      if (status === google.maps.places.PlacesServiceStatus.OK) {
-        businesses = businesses.concat(results.filter(function(result) {
-          return result.types.includes('establishment');
-        }));
-        if (pagination.hasNextPage) {
-          getNextPage = function() {
-            pagination.nextPage();
+          var city = businessInput.value;
+          searchButton.innerHTML = 'Loading...';
+          exportButton.disabled = true;
+          searchButton.disabled = true;
+          console.log(radiusInput.value*1000);
+          var request = {
+            location: map.getCenter(),
+            radius: radiusInput.value*1000,
+            query: city,
+            fields: ['name', 'formatted_address', 'rating', 'user_ratings_total', 'types']
           };
-        } else {
-          displayResults(businesses);
-          resolve(businesses);
-          return;
+          return new Promise((resolve, reject) => {
+            var businesses = [];
+            var getNextPage = null;
+            var addResults = function(results, status, pagination) {
+              if (status === google.maps.places.PlacesServiceStatus.OK) {
+                businesses = businesses.concat(results.filter(function(result) {
+                  return result.types.includes('establishment');
+                }));
+                if (pagination.hasNextPage) {
+                  getNextPage = function() {
+                    pagination.nextPage();
+                  };
+                } else {
+                  displayResults(businesses);
+                  resolve(businesses);
+                  return;
+                }
+              } else {
+                reject(status);
+                return;
+              }
+              setTimeout(function() {
+                getNextPage();
+              }, 1);
+            };
+            service.textSearch(request, addResults);
+          });
         }
-      } else {
-        reject(status);
-        return;
-      }
-      setTimeout(function() {
-        getNextPage();
-      }, 1000);
-    };
-    service.textSearch(request, addResults);
-  });
-}
 
 
 
@@ -235,16 +242,24 @@ button.search-button:active {
                 //html += '<p class="business-address">' + business.formatted_address + '</p>';
                 let [place, status] = await new Promise(resolve => {
                 service.getDetails({placeId: business.place_id}, (place, status) => {
-                    resolve([place, status]);
+                    console.log(status);
+                    setTimeout(() => {
+                      resolve([place, status]);
+                    }, 500);
                 });
                 });
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
+                  console.log("Status OK");
                 if (place.formatted_phone_number) {
                     html += '<p class="business-phone">Phone: ' + place.formatted_phone_number + '</p>';
+                } else {
+                  console.log("No phone");
                 }
                 if (place.website) {
                     html += '<p>Website: <a  class="business-website" href="' + place.website + '">' + place.website + '</a></p>';
                 }
+                } else {
+                  console.log("Status not okay");
                 }
                 //html += '<p>Rating: ' + business.rating + ' (' + business.user_ratings_total + ' reviews)</p>';
                 html += '</div>';
